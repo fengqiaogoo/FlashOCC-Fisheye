@@ -9,33 +9,41 @@ from pyquaternion import Quaternion
 from tools.data_converter import nuscenes_converter as nuscenes_converter
 
 map_name_from_general_to_detection = {
-    'human.pedestrian.adult': 'pedestrian',
-    'human.pedestrian.child': 'pedestrian',
-    'human.pedestrian.wheelchair': 'ignore',
-    'human.pedestrian.stroller': 'ignore',
-    'human.pedestrian.personal_mobility': 'ignore',
-    'human.pedestrian.police_officer': 'pedestrian',
-    'human.pedestrian.construction_worker': 'pedestrian',
-    'animal': 'ignore',
-    'vehicle.car': 'car',
-    'vehicle.motorcycle': 'motorcycle',
-    'vehicle.bicycle': 'bicycle',
-    'vehicle.bus.bendy': 'bus',
-    'vehicle.bus.rigid': 'bus',
-    'vehicle.truck': 'truck',
-    'vehicle.construction': 'construction_vehicle',
-    'vehicle.emergency.ambulance': 'ignore',
-    'vehicle.emergency.police': 'ignore',
-    'vehicle.trailer': 'trailer',
-    'movable_object.barrier': 'barrier',
-    'movable_object.trafficcone': 'traffic_cone',
-    'movable_object.pushable_pullable': 'ignore',
-    'movable_object.debris': 'ignore',
-    'static_object.bicycle_rack': 'ignore',
+    "human.pedestrian.adult": "pedestrian",
+    "human.pedestrian.child": "pedestrian",
+    "human.pedestrian.wheelchair": "ignore",
+    "human.pedestrian.stroller": "ignore",
+    "human.pedestrian.personal_mobility": "ignore",
+    "human.pedestrian.police_officer": "pedestrian",
+    "human.pedestrian.construction_worker": "pedestrian",
+    "animal": "ignore",
+    "vehicle.car": "car",
+    "vehicle.motorcycle": "motorcycle",
+    "vehicle.bicycle": "bicycle",
+    "vehicle.bus.bendy": "bus",
+    "vehicle.bus.rigid": "bus",
+    "vehicle.truck": "truck",
+    "vehicle.construction": "construction_vehicle",
+    "vehicle.emergency.ambulance": "ignore",
+    "vehicle.emergency.police": "ignore",
+    "vehicle.trailer": "trailer",
+    "movable_object.barrier": "barrier",
+    "movable_object.trafficcone": "traffic_cone",
+    "movable_object.pushable_pullable": "ignore",
+    "movable_object.debris": "ignore",
+    "static_object.bicycle_rack": "ignore",
 }
 classes = [
-    'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
-    'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+    "car",
+    "truck",
+    "construction_vehicle",
+    "bus",
+    "trailer",
+    "barrier",
+    "motorcycle",
+    "bicycle",
+    "pedestrian",
+    "traffic_cone",
 ]
 
 
@@ -49,24 +57,24 @@ def get_gt(info):
         Tensor: GT bboxes.
         Tensor: GT labels.
     """
-    ego2global_rotation = info['cams']['CAM_FRONT']['ego2global_rotation']
-    ego2global_translation = info['cams']['CAM_FRONT'][
-        'ego2global_translation']
+    ego2global_rotation = info["cams"]["CAM_FRONT"]["ego2global_rotation"]
+    ego2global_translation = info["cams"]["CAM_FRONT"]["ego2global_translation"]
     trans = -np.array(ego2global_translation)
     rot = Quaternion(ego2global_rotation).inverse
     gt_boxes = list()
     gt_labels = list()
-    for ann_info in info['ann_infos']:
+    for ann_info in info["ann_infos"]:
         # Use ego coordinate.
-        if (map_name_from_general_to_detection[ann_info['category_name']]
-                not in classes
-                or ann_info['num_lidar_pts'] + ann_info['num_radar_pts'] <= 0):
+        if (
+            map_name_from_general_to_detection[ann_info["category_name"]] not in classes
+            or ann_info["num_lidar_pts"] + ann_info["num_radar_pts"] <= 0
+        ):
             continue
         box = Box(
-            ann_info['translation'],
-            ann_info['size'],
-            Quaternion(ann_info['rotation']),
-            velocity=ann_info['velocity'],
+            ann_info["translation"],
+            ann_info["size"],
+            Quaternion(ann_info["rotation"]),
+            velocity=ann_info["velocity"],
         )
         box.translate(trans)
         box.rotate(rot)
@@ -77,8 +85,8 @@ def get_gt(info):
         gt_box = np.concatenate([box_xyz, box_dxdydz, box_yaw, box_velo])
         gt_boxes.append(gt_box)
         gt_labels.append(
-            classes.index(
-                map_name_from_general_to_detection[ann_info['category_name']]))
+            classes.index(map_name_from_general_to_detection[ann_info["category_name"]])
+        )
     return gt_boxes, gt_labels
 
 
@@ -96,54 +104,54 @@ def nuscenes_data_prep(root_path, info_prefix, version, max_sweeps=10):
             Default: 10
     """
     nuscenes_converter.create_nuscenes_infos(
-        root_path, info_prefix, version=version, max_sweeps=max_sweeps)
+        root_path, info_prefix, version=version, max_sweeps=max_sweeps
+    )
 
 
-def add_ann_adj_info(extra_tag):
-    nuscenes_version = 'v1.0-trainval'
-    dataroot = './data/nuscenes/'
+def add_ann_adj_info(extra_tag, nuscenes_version="v1.0-trainval"):
+    dataroot = "mmdetection3d/data/nuscenes/"
     nuscenes = NuScenes(nuscenes_version, dataroot)
-    for set in ['train', 'val']:
+    for set in ["train", "val"]:
         dataset = pickle.load(
-            open('%s/%s_infos_%s.pkl' % (dataroot, extra_tag, set), 'rb'))
-        for id in range(len(dataset['infos'])):
+            open("%s/%s_infos_%s.pkl" % (dataroot, extra_tag, set), "rb")
+        )
+        for id in range(len(dataset["infos"])):
             if id % 10 == 0:
-                print('%d/%d' % (id, len(dataset['infos'])))
-            info = dataset['infos'][id]
+                print("%d/%d" % (id, len(dataset["infos"])))
+            info = dataset["infos"][id]
             # get sweep adjacent frame info
-            sample = nuscenes.get('sample', info['token'])
+            sample = nuscenes.get("sample", info["token"])
             ann_infos = list()
-            for ann in sample['anns']:
-                ann_info = nuscenes.get('sample_annotation', ann)
-                velocity = nuscenes.box_velocity(ann_info['token'])
+            for ann in sample["anns"]:
+                ann_info = nuscenes.get("sample_annotation", ann)
+                velocity = nuscenes.box_velocity(ann_info["token"])
                 if np.any(np.isnan(velocity)):
                     velocity = np.zeros(3)
-                ann_info['velocity'] = velocity
+                ann_info["velocity"] = velocity
                 ann_infos.append(ann_info)
-            dataset['infos'][id]['ann_infos'] = ann_infos
-            dataset['infos'][id]['ann_infos'] = get_gt(dataset['infos'][id])
-            dataset['infos'][id]['scene_token'] = sample['scene_token']
+            dataset["infos"][id]["ann_infos"] = ann_infos
+            dataset["infos"][id]["ann_infos"] = get_gt(dataset["infos"][id])
+            dataset["infos"][id]["scene_token"] = sample["scene_token"]
 
-            scene = nuscenes.get('scene', sample['scene_token'])
-            dataset['infos'][id]['scene_name'] = scene['name']
-            dataset['infos'][id]['occ_path'] = \
-                './data/nuscenes/gts/%s/%s'%(scene['name'], info['token'])
-        with open('%s/%s_infos_%s.pkl' % (dataroot, extra_tag, set),
-                  'wb') as fid:
+            scene = nuscenes.get("scene", sample["scene_token"])
+            dataset["infos"][id]["scene_name"] = scene["name"]
+            dataset["infos"][id]["occ_path"] = "mmdetection3d/data/nuscenes/gts/%s/%s" % (
+                scene["name"],
+                info["token"],
+            )
+        with open("%s/%s_infos_%s.pkl" % (dataroot, extra_tag, set), "wb") as fid:
             pickle.dump(dataset, fid)
 
 
-if __name__ == '__main__':
-    dataset = 'nuscenes'
-    version = 'v1.0'
-    train_version = f'{version}-trainval'
-    root_path = 'data/nuscenes'
-    extra_tag = 'bevdetv2-nuscenes'
+if __name__ == "__main__":
+    dataset = "nuscenes"
+    version = "v1.0-mini"
+    # version = 'v1.0-trainval'
+    root_path = "mmdetection3d/data/nuscenes"
+    extra_tag = "bevdetv2-nuscenes"
     nuscenes_data_prep(
-        root_path=root_path,
-        info_prefix=extra_tag,
-        version=train_version,
-        max_sweeps=0)
+        root_path=root_path, info_prefix=extra_tag, version=version, max_sweeps=0
+    )
 
-    print('add_ann_infos')
-    add_ann_adj_info(extra_tag)
+    print("add_ann_infos")
+    add_ann_adj_info(extra_tag, version)
