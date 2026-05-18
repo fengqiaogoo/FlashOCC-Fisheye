@@ -242,7 +242,7 @@ class BEVDet4D(BEVDet):
         # key_ego --> global  (B, 1, 1, 4, 4)
         keyego2global = ego2globals[:, 0, 0, ...].unsqueeze(1).unsqueeze(1)
         # global --> key_ego  (B, 1, 1, 4, 4)
-        global2keyego = torch.inverse(keyego2global.double())
+        global2keyego = torch.linalg.inv(keyego2global.double())
         # sensor --> ego --> global --> key_ego
         sensor2keyegos = \
             global2keyego @ ego2globals.double() @ sensor2egos.double()     # (B, N_frames, N_views, 4, 4)
