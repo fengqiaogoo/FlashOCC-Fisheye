@@ -402,3 +402,58 @@ class BEVOCCHead2D_V2(BaseModule):      # Use stronger loss setting
         occ_score = occ_pred.softmax(-1)    # (B, Dx, Dy, Dz, C)
         occ_res = occ_score.argmax(-1).int()      # (B, Dx, Dy, Dz)
         return list(occ_res)
+
+
+@HEADS.register_module()
+class FisheyeBEVOCCHead2D(BEVOCCHead2D_V2):
+    """BEVOCCHead2D_V2 adapted for fisheye occupancy.
+
+    Differences from V2:
+    - non_empty_idx=0 (class 0 = free/unknown in fisheye, vs 17 in nuScenes)
+    - pass ignore=255 to lovasz_softmax
+    - supports custom class_weights via config (not hardcoded nuScenes freqs)
+    """
+
+    def __init__(self,
+                 in_dim=256,
+                 out_dim=256,
+                 Dz=16,
+                 use_mask=True,
+                 num_classes=18,
+                 use_predicter=True,
+                 class_balance=False,
+                 loss_occ=None,
+                 non_empty_idx=0,
+                 ignore_index=255,
+                 **kwargs):
+        super(FisheyeBEVOCCHead2D, self).__init__(
+            in_dim=in_dim,
+            out_dim=out_dim,
+            Dz=Dz,
+            use_mask=use_mask,
+            num_classes=num_classes,
+            use_predicter=use_predicter,
+            class_balance=False,  # disable parent class_balance (nuScenes freqs)
+            loss_occ=loss_occ,
+        )
+        self.non_empty_idx = non_empty_idx
+        self.ignore_index = ignore_index
+
+    def loss(self, occ_pred, voxel_semantics, mask_camera):
+        """Fisheye loss: geo_scal with non_empty_idx=0, lovasz with ignore=255."""
+        loss = dict()
+        voxel_semantics = voxel_semantics.long()
+        preds = occ_pred.permute(0, 4, 1, 2, 3).contiguous()
+
+        loss_occ = self.loss_occ(
+            preds, voxel_semantics,
+            weight=self.cls_weights.to(preds) if hasattr(self, 'cls_weights') and self.cls_weights is not None else None,
+        ) * 100.0
+        loss['loss_occ'] = loss_occ
+        loss['loss_voxel_sem_scal'] = sem_scal_loss(preds, voxel_semantics, ignore_index=self.ignore_index)
+        loss['loss_voxel_geo_scal'] = geo_scal_loss(preds, voxel_semantics,
+                                                    ignore_index=self.ignore_index,
+                                                    non_empty_idx=self.non_empty_idx)
+        loss['loss_voxel_lovasz'] = lovasz_softmax(
+            torch.softmax(preds, dim=1), voxel_semantics, ignore=self.ignore_index)
+        return loss

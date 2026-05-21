@@ -291,15 +291,20 @@ def main():
         cfg = Config.fromfile(args.config)
         data_root = cfg.data_root
         print('data_root read from config: %s' % data_root)
+        # Try to read ann_file from config's data split
+        try:
+            info_path = cfg.data[args.version].ann_file
+            print('ann_file read from config: %s' % info_path)
+        except (KeyError, AttributeError):
+            info_path = data_root + '/bevdetv2-nuscenes_infos_%s.pkl' % args.version
     else:
         data_root = args.root_path
+        info_path = data_root + '/bevdetv2-nuscenes_infos_%s.pkl' % args.version
 
     # load predicted results
     results_dir = args.res
 
     # load dataset information
-    info_path = \
-        data_root + '/bevdetv2-nuscenes_infos_%s.pkl' % args.version
     dataset = pickle.load(open(info_path, 'rb'))
     # prepare save path and medium
     vis_dir = args.save_path
