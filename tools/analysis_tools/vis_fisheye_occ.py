@@ -132,7 +132,7 @@ def show_occ(occ_state, occ_show, voxel_size, vis=None, offset=[0, 0, 0]):
 def parse_args():
     parser = argparse.ArgumentParser(description='Visualize fisheye occupancy results')
     parser.add_argument('res', help='Path to the predicted result directory')
-    parser.add_argument('--canva-size', type=int, default=1000, help='Size of canva in pixel')
+    parser.add_argument('--canva-size', type=int, default=400, help='Size of canva in pixel')
     parser.add_argument('--vis-frames', type=int, default=500,
                         help='Number of frames for visualization')
     parser.add_argument('--scale-factor', type=int, default=2,
@@ -234,8 +234,8 @@ def main():
         # Set camera view
         view_control = vis.get_view_control()
         look_at = np.array([0.0, 0.0, 1.0])
-        front = np.array([-0.6, -0.6, 0.4])
-        up = np.array([0.3, 0.3, 0.9])
+        front = np.array([0.0, 0.5, 0.4])
+        up = np.array([0.0, 0.3, 0.9])
         zoom = np.array([0.15])
         view_control.set_lookat(look_at)
         view_control.set_front(front)
