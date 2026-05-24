@@ -14,7 +14,7 @@ class FisheyeMetric_mIoU:
         use_occupied_mask (bool): Whether to filter by occupied mask.
     """
 
-    def __init__(self, num_classes=6, use_lidar_mask=False,
+    def __init__(self, num_classes=7, use_lidar_mask=False,
                  use_image_mask=False, use_occupied_mask=True):
         self.num_classes = num_classes
         self.use_lidar_mask = use_lidar_mask
@@ -82,9 +82,17 @@ class FisheyeMetric_mIoU:
         miou = iou.mean()
 
         results = {'mIoU': miou}
-        class_names = ['unknown', 'person', 'table', 'chair', 'floor', 'car']
+        class_names = ['free', 'unknown', 'person', 'table', 'chair', 'floor', 'car']
         for i in range(self.num_classes):
             results[f'IoU_{class_names[i]}'] = iou[i]
+
+        # Print confusion matrix for debugging
+        print('\nConfusion matrix (rows=GT, cols=Pred):')
+        header = '         ' + ''.join(f'{n:>8s}' for n in class_names)
+        print(header)
+        for i in range(self.num_classes):
+            row = f'{class_names[i]:>8s}: ' + ''.join(f'{self.confusion_matrix[i,j]:>8d}' for j in range(self.num_classes))
+            print(row)
 
         return results
 
@@ -92,7 +100,7 @@ class FisheyeMetric_mIoU:
 class FisheyeMetric_FScore:
     """F-score metric for 6-class fisheye occupancy prediction."""
 
-    def __init__(self, num_classes=6, threshold=0.5):
+    def __init__(self, num_classes=7, threshold=0.5):
         self.num_classes = num_classes
         self.threshold = threshold
         self.reset()

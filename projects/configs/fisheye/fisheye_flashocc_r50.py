@@ -6,7 +6,7 @@ plugin_dir = 'projects/mmdet3d_plugin/'
 point_cloud_range = [-10.0, -10.0, -2.0, 10.0, 10.0, 2.0]
 
 class_names = [
-    'unknown', 'person', 'table', 'chair', 'floor', 'car'
+    'free', 'unknown', 'person', 'table', 'chair', 'floor', 'car'
 ]
 
 data_config = {
@@ -82,7 +82,7 @@ model = dict(
         out_dim=256,
         Dz=20,
         use_mask=True,
-        num_classes=6,
+        num_classes=7,
         use_predicter=True,
         class_balance=False,
         loss_occ=dict(
@@ -90,10 +90,10 @@ model = dict(
             use_sigmoid=False,
             ignore_index=255,
             loss_weight=1.0,
-            # Fisheye class weights: 1/log(freq+1) normalized by class 0
-            # class 0(free):93.15% 1(person):0.01% 2(table):0.84%
-            # 3(chair):0.01% 4(floor):5.66% 5(car):0.32%
-            class_weight=[1.0, 2.18, 1.40, 2.25, 1.20, 1.52],
+            # 7-class weights: unknown boosted to penalize false free predictions
+            # class 0(free):90.24% 1(unknown):2.91% 2(person):0.01%
+            # 3(table):0.84% 4(chair):0.01% 5(floor):5.66% 6(car):0.32%
+            class_weight=[1.0, 3.0, 2.173, 1.393, 2.247, 1.201, 1.515],
         ),
     )
 )

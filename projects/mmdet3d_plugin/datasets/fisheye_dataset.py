@@ -115,10 +115,10 @@ class FisheyeDatasetOccpancy(FisheyeDataset):
             metric = metric[0]
 
         self.occ_eval_metrics = FisheyeMetric_mIoU(
-            num_classes=6,
+            num_classes=7,
             use_lidar_mask=False,
             use_image_mask=False,
-            use_occupied_mask=True)
+            use_occupied_mask=False)
 
         print('\nStarting Fisheye OCC Evaluation...')
         for index, occ_pred in enumerate(tqdm(occ_results)):
@@ -127,10 +127,21 @@ class FisheyeDatasetOccpancy(FisheyeDataset):
             gt_semantics = occ_gt['semantics']      # (Dx, Dy, Dz) = (100, 100, 20)
             occupied = occ_gt['occupied']            # (Dx, Dy, Dz)
 
+            # Remap to 7-class labels (mirrors FisheyeLoadOccGTFromFile)
+            # occupied=0 -> class 0 (free)
+            # occupied=1, semantics=0 -> class 1 (unknown)
+            # occupied=1, semantics=1..5 -> class 2..6
+            gt_remapped = np.zeros_like(gt_semantics)
+            gt_remapped[occupied == 0] = 0
+            unknown_mask = (occupied == 1) & (gt_semantics == 0)
+            gt_remapped[unknown_mask] = 1
+            known_mask = (occupied == 1) & (gt_semantics > 0)
+            gt_remapped[known_mask] = gt_semantics[known_mask] + 1
+
             pred = occ_pred['pred_occ'] if isinstance(occ_pred, dict) else occ_pred
             self.occ_eval_metrics.add_batch(
                 pred,           # (Dx, Dy, Dz)
-                gt_semantics,   # (Dx, Dy, Dz)
+                gt_remapped,    # (Dx, Dy, Dz)
                 mask_lidar=None,
                 mask_camera=occupied,
             )
@@ -141,8 +152,7 @@ class FisheyeDatasetOccpancy(FisheyeDataset):
                 save_path = os.path.join(show_dir, f'{sample_token}.npz')
                 np.savez_compressed(save_path,
                                     pred=pred,
-                                    gt=gt_semantics,
-                                    occupied=occupied,
+                                    gt=gt_remapped,
                                     sample_token=sample_token)
 
         eval_results = self.occ_eval_metrics.count_miou()

@@ -285,10 +285,17 @@ class FisheyeLoadOccGTFromFile(object):
     The fisheye NPZ contains: 'semantics' (100,100,20) uint8 and
     'occupied' (100,100,20) uint8.
 
+    7-class label mapping (mirrors nuScenes: 1 free + 6 occupied):
+        occupied=0              -> class 0 (free)
+        occupied=1, semantics=0 -> class 1 (unknown occupied)
+        occupied=1, semantics=1 -> class 2 (person)
+        occupied=1, semantics=2 -> class 3 (table)
+        occupied=1, semantics=3 -> class 4 (chair)
+        occupied=1, semantics=4 -> class 5 (floor)
+        occupied=1, semantics=5 -> class 6 (car)
+
     mask_lidar = occupied (for metrics evaluation).
-    mask_camera = all ones (4 fisheye cameras cover 360 deg, all voxels
-        in the grid are observable by at least one camera).
-    Voxels with occupied=1 but semantics=0 are set to ignore_index=255.
+    mask_camera = all ones (4 fisheye cameras cover 360 deg).
     """
 
     def __call__(self, results):
@@ -299,18 +306,26 @@ class FisheyeLoadOccGTFromFile(object):
 
         semantics = torch.from_numpy(semantics.astype(np.int64))
         occupied = torch.from_numpy(occupied.astype(np.int64))
-        # Voxels that are occupied but have unknown class -> set to ignore_index
-        semantics[(occupied == 1) & (semantics == 0)] = 255
+
+        # Remap to 7-class label space
+        # occupied=1, semantics=0 -> class 1 (unknown occupied)
+        unknown_mask = (occupied == 1) & (semantics == 0)
+        semantics[unknown_mask] = 1
+        # occupied=1, semantics=1..5 -> shift to class 2..6
+        known_mask = (occupied == 1) & (semantics > 0)
+        semantics[known_mask] += 1
+        # occupied=0 stays class 0 (free)
+        voxel_semantics = semantics
 
         # Apply BEV flips if augmentation was applied
         if results.get('flip_dx', False):
-            semantics = torch.flip(semantics, [0])
+            voxel_semantics = torch.flip(voxel_semantics, [0])
             occupied = torch.flip(occupied, [0])
         if results.get('flip_dy', False):
-            semantics = torch.flip(semantics, [1])
+            voxel_semantics = torch.flip(voxel_semantics, [1])
             occupied = torch.flip(occupied, [1])
 
-        results['voxel_semantics'] = semantics
+        results['voxel_semantics'] = voxel_semantics
         results['mask_lidar'] = occupied      # only LiDAR-observed voxels for eval
         # mask_camera = all voxels in grid are camera-observable (4 fisheye cameras cover 360 deg)
         results['mask_camera'] = torch.ones_like(occupied)
