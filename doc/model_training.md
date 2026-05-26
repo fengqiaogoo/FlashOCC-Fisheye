@@ -1,21 +1,14 @@
-
-#### Train model
-```shell
-# single gpu
-python tools/train.py $config
-python tools/train.py projects/configs/flashocc/flashocc-r50.py
-# multiple gpu
-./tools/dist_train.sh $config num_gpu
-```
-
-#### Fisheye
+# Train model
 ```shell
 # train (single GPU)
 python tools/train.py projects/configs/fisheye/fisheye_flashocc_r50.py
 
 # train (multi GPU, e.g. 4 GPUs)
 bash tools/dist_train.sh projects/configs/fisheye/fisheye_flashocc_r50.py 4
+```
 
+# Test model
+```bash
 # test (single GPU)
 python tools/test.py projects/configs/fisheye/fisheye_flashocc_r50.py work_dirs/fisheye_flashocc_r50/latest.pth --eval map
 
@@ -28,9 +21,7 @@ bash tools/dist_test.sh projects/configs/fisheye/fisheye_flashocc_r50.py work_di
 
 #### Test model
 ```shell
-# single gpu
-python tools/test.py $config $checkpoint --eval mAP
-python tools/test.py projects/configs/flashocc/flashocc-r50.py work_dirs/flashocc-r50/latest.pth --eval mAP
+
 # multiple gpu
 ./tools/dist_test.sh $config $checkpoint num_gpu --eval mAP
 # ray-iou metric

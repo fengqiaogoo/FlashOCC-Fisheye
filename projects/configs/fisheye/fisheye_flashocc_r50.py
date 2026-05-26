@@ -81,7 +81,7 @@ model = dict(
         in_dim=256,
         out_dim=256,
         Dz=20,
-        use_mask=True,
+        use_mask=False,
         num_classes=7,
         use_predicter=True,
         class_balance=False,
@@ -123,20 +123,9 @@ train_pipeline = [
         classes=class_names,
         is_train=True),
     dict(type='FisheyeLoadOccGTFromFile'),
-    dict(
-        type='LoadPointsFromFile',
-        coord_type='LIDAR',
-        load_dim=3,
-        use_dim=3,
-        shift_height=False,
-        file_client_args=file_client_args),
-    dict(
-        type='FisheyePointToMultiViewDepth',
-        downsample=1,
-        grid_config=grid_config),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
     dict(
-        type='Collect3D', keys=['img_inputs', 'gt_depth', 'voxel_semantics',
+        type='Collect3D', keys=['img_inputs', 'voxel_semantics',
                                 'mask_lidar', 'mask_camera'])
 ]
 
@@ -152,13 +141,6 @@ test_pipeline = [
         is_train=False),
     dict(type='FisheyeLoadOccGTFromFile'),
     dict(
-        type='LoadPointsFromFile',
-        coord_type='LIDAR',
-        load_dim=3,
-        use_dim=3,
-        shift_height=False,
-        file_client_args=file_client_args),
-    dict(
         type='MultiScaleFlipAug3D',
         img_scale=(1333, 800),
         pts_scale_ratio=1,
@@ -168,7 +150,7 @@ test_pipeline = [
                 type='DefaultFormatBundle3D',
                 class_names=class_names,
                 with_label=False),
-            dict(type='Collect3D', keys=['points', 'img_inputs'])
+            dict(type='Collect3D', keys=['img_inputs'])
         ])
 ]
 
