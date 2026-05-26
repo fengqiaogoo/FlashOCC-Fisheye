@@ -13,7 +13,7 @@ import cv2
 NOT_OBSERVED = -1
 FREE = 0
 OCCUPIED = 1
-FREE_LABEL = 0
+FREE_LABEL = 6
 BINARY_OBSERVED = 1
 BINARY_NOT_OBSERVED = 0
 
@@ -21,16 +21,16 @@ VOXEL_SIZE = [0.2, 0.2, 0.2]
 POINT_CLOUD_RANGE = [-10, -10, -2, 10, 10, 2]
 SPTIAL_SHAPE = [100, 100, 20]
 
-# Fisheye 7-class colormap: free, unknown, person, table, chair, floor, car
+# Fisheye 7-class colormap: unknown, person, table, chair, floor, car, free
 colormap_to_colors = np.array(
     [
-        [0,   0,   0, 255],    # 0 free - black (not shown in vis)
-        [128, 128, 128, 255],  # 1 unknown occupied - gray
-        [220, 20, 60, 255],    # 2 person - crimson
-        [255, 158, 0, 255],    # 3 table - orange
-        [0,   0, 230, 255],    # 4 chair - blue
-        [47,  79, 79, 255],    # 5 floor - darkslategray
-        [255, 99, 71, 255],    # 6 car - tomato
+        [128, 128, 128, 255],  # 0 unknown occupied - gray
+        [220, 20, 60, 255],    # 1 person - crimson
+        [255, 158, 0, 255],    # 2 table - orange
+        [0,   0, 230, 255],    # 3 chair - blue
+        [47,  79, 79, 255],    # 4 floor - darkslategray
+        [255, 99, 71, 255],    # 5 car - tomato
+        [0,   0,   0, 255],    # 6 free - black (not shown in vis)
     ], dtype=np.float32)
 
 
@@ -225,12 +225,12 @@ def main():
                        offset=[0, pred_occ.shape[0] * voxel_size[0] * 1.2 * 0, 0])
 
         if args.draw_gt:
-            gt_remapped = result_data['gt']      # (Dx, Dy, Dz) already 7-class
-            gt_voxel_show = gt_remapped != FREE_LABEL
-            vis = show_occ(torch.from_numpy(gt_remapped),
+            gt_semantics = result_data['gt']       # (Dx, Dy, Dz) 7-class labels
+            gt_voxel_show = gt_semantics != FREE_LABEL
+            vis = show_occ(torch.from_numpy(gt_semantics),
                            torch.from_numpy(gt_voxel_show),
                            voxel_size=voxel_size, vis=vis,
-                           offset=[0, gt_remapped.shape[0] * voxel_size[0] * 1.2 * 1, 0])
+                           offset=[0, gt_semantics.shape[0] * voxel_size[0] * 1.2 * 1, 0])
 
         # Set camera view
         view_control = vis.get_view_control()

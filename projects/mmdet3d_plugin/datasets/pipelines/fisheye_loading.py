@@ -269,66 +269,53 @@ class FisheyeLoadAnnotationsBEVDepth(object):
                 results['voxel_semantics'] = results['voxel_semantics'][::-1, ...].copy()
             if 'mask_camera' in results:
                 results['mask_camera'] = results['mask_camera'][::-1, ...].copy()
+            if 'mask_lidar' in results:
+                results['mask_lidar'] = results['mask_lidar'][::-1, ...].copy()
         if results.get('flip_dy', False):
             if 'voxel_semantics' in results:
                 results['voxel_semantics'] = results['voxel_semantics'][:, ::-1, ...].copy()
             if 'mask_camera' in results:
                 results['mask_camera'] = results['mask_camera'][:, ::-1, ...].copy()
+            if 'mask_lidar' in results:
+                results['mask_lidar'] = results['mask_lidar'][:, ::-1, ...].copy()
 
         return results
 
 
 @PIPELINES.register_module()
 class FisheyeLoadOccGTFromFile(object):
-    """Load occupancy GT from NPZ file for fisheye dataset.
+    """Load occupancy GT from NPZ file for fisheye dataset (updated format).
 
-    The fisheye NPZ contains: 'semantics' (100,100,20) uint8 and
-    'occupied' (100,100,20) uint8.
+    NPZ contains: 'semantics' (100,100,20) uint8, labels 0-6,
+    'mask_camera' (100,100,20) bool, 'mask_lidar' (100,100,20) bool.
 
-    7-class label mapping (mirrors nuScenes: 1 free + 6 occupied):
-        occupied=0              -> class 0 (free)
-        occupied=1, semantics=0 -> class 1 (unknown occupied)
-        occupied=1, semantics=1 -> class 2 (person)
-        occupied=1, semantics=2 -> class 3 (table)
-        occupied=1, semantics=3 -> class 4 (chair)
-        occupied=1, semantics=4 -> class 5 (floor)
-        occupied=1, semantics=5 -> class 6 (car)
-
-    mask_lidar = occupied (for metrics evaluation).
-    mask_camera = all ones (4 fisheye cameras cover 360 deg).
+    Labels: 0=unknown, 1=person, 2=table, 3=chair, 4=floor, 5=car, 6=free.
     """
 
     def __call__(self, results):
         occ_gt_path = results['occ_gt_path']
         occ_labels = np.load(occ_gt_path, allow_pickle=True)
-        semantics = occ_labels['semantics']    # (Dx, Dy, Dz)
-        occupied = occ_labels['occupied']      # (Dx, Dy, Dz)
+        semantics = occ_labels['semantics']    # (Dx, Dy, Dz), 0-6
+        mask_camera = occ_labels['mask_camera']  # camera visibility
+        mask_lidar = occ_labels['mask_lidar']    # LiDAR visibility
 
         semantics = torch.from_numpy(semantics.astype(np.int64))
-        occupied = torch.from_numpy(occupied.astype(np.int64))
-
-        # Remap to 7-class label space
-        # occupied=1, semantics=0 -> class 1 (unknown occupied)
-        unknown_mask = (occupied == 1) & (semantics == 0)
-        semantics[unknown_mask] = 1
-        # occupied=1, semantics=1..5 -> shift to class 2..6
-        known_mask = (occupied == 1) & (semantics > 0)
-        semantics[known_mask] += 1
-        # occupied=0 stays class 0 (free)
-        voxel_semantics = semantics
+        mask_camera = torch.from_numpy(mask_camera.astype(np.int64))
+        mask_lidar = torch.from_numpy(mask_lidar.astype(np.int64))
 
         # Apply BEV flips if augmentation was applied
         if results.get('flip_dx', False):
-            voxel_semantics = torch.flip(voxel_semantics, [0])
-            occupied = torch.flip(occupied, [0])
+            semantics = torch.flip(semantics, [0])
+            mask_camera = torch.flip(mask_camera, [0])
+            mask_lidar = torch.flip(mask_lidar, [0])
         if results.get('flip_dy', False):
-            voxel_semantics = torch.flip(voxel_semantics, [1])
-            occupied = torch.flip(occupied, [1])
+            semantics = torch.flip(semantics, [1])
+            mask_camera = torch.flip(mask_camera, [1])
+            mask_lidar = torch.flip(mask_lidar, [1])
 
-        results['voxel_semantics'] = voxel_semantics
-        results['mask_lidar'] = occupied      # only LiDAR-observed voxels for eval
-        # mask_camera = all voxels in grid are camera-observable (4 fisheye cameras cover 360 deg)
-        results['mask_camera'] = torch.ones_like(occupied)
+        results['voxel_semantics'] = semantics
+        results['mask_camera'] = mask_camera
+        results['mask_lidar'] = mask_lidar
 
         return results
 

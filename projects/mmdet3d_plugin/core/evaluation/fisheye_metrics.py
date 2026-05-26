@@ -82,7 +82,7 @@ class FisheyeMetric_mIoU:
         miou = iou.mean()
 
         results = {'mIoU': miou}
-        class_names = ['free', 'unknown', 'person', 'table', 'chair', 'floor', 'car']
+        class_names = ['unknown', 'person', 'table', 'chair', 'floor', 'car', 'free']
         for i in range(self.num_classes):
             results[f'IoU_{class_names[i]}'] = iou[i]
 

@@ -124,26 +124,16 @@ class FisheyeDatasetOccpancy(FisheyeDataset):
         for index, occ_pred in enumerate(tqdm(occ_results)):
             info = self.data_infos[index]
             occ_gt = np.load(info['occ_path'], allow_pickle=True)
-            gt_semantics = occ_gt['semantics']      # (Dx, Dy, Dz) = (100, 100, 20)
-            occupied = occ_gt['occupied']            # (Dx, Dy, Dz)
-
-            # Remap to 7-class labels (mirrors FisheyeLoadOccGTFromFile)
-            # occupied=0 -> class 0 (free)
-            # occupied=1, semantics=0 -> class 1 (unknown)
-            # occupied=1, semantics=1..5 -> class 2..6
-            gt_remapped = np.zeros_like(gt_semantics)
-            gt_remapped[occupied == 0] = 0
-            unknown_mask = (occupied == 1) & (gt_semantics == 0)
-            gt_remapped[unknown_mask] = 1
-            known_mask = (occupied == 1) & (gt_semantics > 0)
-            gt_remapped[known_mask] = gt_semantics[known_mask] + 1
+            gt_semantics = occ_gt['semantics']    # (Dx, Dy, Dz), labels 0-6
+            mask_camera = occ_gt['mask_camera']   # camera visibility mask
+            mask_lidar = occ_gt['mask_lidar']     # LiDAR visibility mask
 
             pred = occ_pred['pred_occ'] if isinstance(occ_pred, dict) else occ_pred
             self.occ_eval_metrics.add_batch(
                 pred,           # (Dx, Dy, Dz)
-                gt_remapped,    # (Dx, Dy, Dz)
-                mask_lidar=None,
-                mask_camera=occupied,
+                gt_semantics,   # (Dx, Dy, Dz), already 0-6
+                mask_lidar=mask_lidar,
+                mask_camera=mask_camera,
             )
 
             if show_dir is not None:
@@ -152,7 +142,9 @@ class FisheyeDatasetOccpancy(FisheyeDataset):
                 save_path = os.path.join(show_dir, f'{sample_token}.npz')
                 np.savez_compressed(save_path,
                                     pred=pred,
-                                    gt=gt_remapped,
+                                    gt=gt_semantics,
+                                    mask_camera=mask_camera,
+                                    mask_lidar=mask_lidar,
                                     sample_token=sample_token)
 
         eval_results = self.occ_eval_metrics.count_miou()
